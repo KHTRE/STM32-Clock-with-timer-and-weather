@@ -65,10 +65,21 @@ uint8_t screenTime = 0;
 uint8_t screenWeather = 1;
 uint8_t screenTimer = 2;
 uint8_t screenMenu = 3;
+uint8_t screenSetTime = 4;
 
 uint8_t activeMenuOption = 0;
 uint8_t menuSetTime = 0;
 uint8_t menuSetDate = 1;
+
+uint8_t activeSetTimeOption = 0;
+//options names
+uint8_t setTimeSeconds = 0;
+uint8_t setTimeMinutes = 1;
+uint8_t setTimeHours = 2;
+//values
+uint8_t setTime_Hours = 0;
+uint8_t setTime_Minutes = 0;
+uint8_t setTime_Seconds = 0;
 
 uint8_t counter = 0;
 uint8_t prevCounter = 0;
@@ -242,10 +253,10 @@ int main(void)
 	  char bufferTest2[8];
 	  sprintf(bufferTest2, "%02d", time_Seconds);
 	  ssd1306_SetCursor(0, 30);
-	  ssd1306_WriteString(bufferTest, Font_6x8, White);
+	  ssd1306_WriteString(bufferTest, Font_11x18, White);
 	  ssd1306_SetCursor(60, 30);
-	  ssd1306_WriteString(bufferTest2, Font_6x8, White);
-	  ssd1306_SetCursor(0, 40);
+	  ssd1306_WriteString(bufferTest2, Font_11x18, White);
+	  ssd1306_SetCursor(0, 50);
 	  ssd1306_WriteString("end", Font_6x8, White);
   }
 
@@ -272,6 +283,53 @@ int main(void)
   	  ssd1306_SetCursor(0, 25);
   	  ssd1306_FillRectangle(0, 25, 128, 20, activeMenuOption == menuSetDate ? White : Black);
   	  ssd1306_WriteString("Set Date", Font_11x18, activeMenuOption == menuSetDate ? Black : White);
+  }
+
+  void printSetTimeScreen()
+  {
+	uint8_t rawCounter = __HAL_TIM_GET_COUNTER(&htim2);
+//
+//	if (rawCounter != prevCounter)
+//	{
+//
+//		if (activeMenuOption == menuSetTime)
+//		{
+//			activeMenuOption = menuSetDate;
+//		} else {
+//			activeMenuOption = menuSetTime;
+//		}
+//
+//		prevCounter = rawCounter;
+//	}
+
+//	  HAL_RTC_GetTime(&hrtc, &sTime, FORMAT_BCD);
+//	  HAL_RTC_GetDate(&hrtc, &DateToUpdate, FORMAT_BCD);
+
+
+	  if (activeSetTimeOption == setTimeSeconds) {
+		  setTime_Seconds = rawCounter;
+	  } else if (activeSetTimeOption == setTimeMinutes) {
+		  setTime_Minutes = rawCounter;
+	  } else if (activeSetTimeOption == setTimeHours) {
+		  setTime_Hours = rawCounter;
+	  }
+
+	  char buffer_hours[4];
+	  sprintf(buffer_hours, "%02d", setTime_Hours);
+	  char buffer_min[4];
+	  sprintf(buffer_min, "%02d", setTime_Minutes);
+	  char buffer_sec[4];
+	  sprintf(buffer_sec, "%02d", setTime_Seconds);
+
+	  ssd1306_SetCursor(0, 0);
+	  ssd1306_WriteString(buffer_hours, Font_16x26, White);
+	  ssd1306_SetCursor(35, 0);
+	  ssd1306_WriteString(":", Font_16x26, White);
+	  ssd1306_SetCursor(55, 0);
+	  ssd1306_WriteString(buffer_min, Font_16x26, White);
+	  ssd1306_SetCursor(95, 0);
+	  ssd1306_WriteString(buffer_sec, Font_7x10, White);
+
   }
 
   void checkAlarm()
@@ -322,6 +380,9 @@ int main(void)
 	  } else if (activeScreen == screenMenu)
 	  {
 		  printMenuScreen();
+	  } else if (activeScreen == screenSetTime)
+	  {
+		  printSetTimeScreen();
 	  }
 
 
@@ -622,6 +683,10 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+uint8_t DecimalToBCD(uint8_t val) {
+    return ((val / 10) << 4) | (val % 10);
+}
+
 void Set_RTC_Alarm(uint32_t seconds)
 {
     // Get the current time and date
@@ -635,9 +700,9 @@ void Set_RTC_Alarm(uint32_t seconds)
     uint32_t new_minutes = minutes % 60;
     uint32_t new_hours = (sTime.Hours + (minutes / 60)) % 24;
 
-    sAlarm.AlarmTime.Hours = new_hours;
-    sAlarm.AlarmTime.Minutes = new_minutes;
-    sAlarm.AlarmTime.Seconds = new_seconds;
+    sAlarm.AlarmTime.Hours = DecimalToBCD(new_hours);
+    sAlarm.AlarmTime.Minutes = DecimalToBCD(new_minutes);
+    sAlarm.AlarmTime.Seconds = DecimalToBCD(new_seconds);
     // Set the alarm
     if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
     {
@@ -691,10 +756,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 						}
 					}
 				} else {
-					if (activeScreen != screenMenu) {
+					if (activeScreen == screenSetTime) {
 						activeScreen = screenMenu;
-					} else {
+					} else if (activeScreen == screenMenu) {
 						activeScreen = screenTime;
+					} else if (activeScreen == screenTime) {
+						activeScreen = screenMenu;
 					}
 				}
 
@@ -716,6 +783,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				} else if (activeScreen == screenTime)
 				{
 					activeScreen = screenWeather;
+				} else if (activeScreen == screenMenu)
+				{
+					if (activeMenuOption == menuSetTime)
+					{
+						activeScreen = screenSetTime;
+					}
+				} else if (activeScreen == screenSetTime) {
+					  if (activeSetTimeOption == setTimeSeconds) {
+						  sTime.Seconds = DecimalToBCD(setTime_Seconds);
+						  __HAL_TIM_SET_COUNTER(&htim2, 0);
+						  activeSetTimeOption = setTimeMinutes;
+					  } else if (activeSetTimeOption == setTimeMinutes) {
+						  sTime.Minutes = DecimalToBCD(setTime_Minutes);
+						  __HAL_TIM_SET_COUNTER(&htim2, 0);
+						  activeSetTimeOption = setTimeHours;
+					  } else if (activeSetTimeOption == setTimeHours) {
+						  sTime.Hours = DecimalToBCD(setTime_Hours);
+						  __HAL_TIM_SET_COUNTER(&htim2, 0);
+						  HAL_RTC_SetTime(&hrtc, &sTime, FORMAT_BCD);
+						  activeSetTimeOption = setTimeSeconds;
+						  activeScreen = screenMenu;
+					  }
 				}
 
 				lastInterruptTime1 = currentTime;
