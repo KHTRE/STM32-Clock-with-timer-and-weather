@@ -91,6 +91,16 @@ RTC_TimeTypeDef sTime = {0};
 RTC_DateTypeDef DateToUpdate = {0};
 RTC_AlarmTypeDef sAlarm = {0};
 RTC_DateTypeDef sDate = {0};
+
+uint8_t DecimalToBCD(uint8_t val) {
+    return ((val / 10) << 4) | (val % 10);
+}
+
+uint8_t BCD_to_Decimal(uint8_t bcd) {
+   return ((bcd >> 4) * 10) + (bcd & 0x0F);
+}
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -160,9 +170,6 @@ int main(void)
 	}
   }
 
-  uint8_t BCD_to_Decimal(uint8_t bcd) {
-     return ((bcd >> 4) * 10) + (bcd & 0x0F);
-  }
 
   void printTimeScreen()
   {
@@ -217,10 +224,6 @@ int main(void)
   {
 	  HAL_RTC_GetTime(&hrtc, &sTime, FORMAT_BCD);
 	  HAL_RTC_GetDate(&hrtc, &DateToUpdate, FORMAT_BCD);
-//	  HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, FORMAT_BCD);
-
-
-	  uint8_t time_Seconds = BCD_to_Decimal(sTime.Seconds);
 
 	  uint32_t rawCounter = __HAL_TIM_GET_COUNTER(&htim2);
 
@@ -238,26 +241,21 @@ int main(void)
 		}
 	  }
 
-	  char bufferEncoder[4];
-	  sprintf(bufferEncoder, "%02d", counter);
+	  uint8_t timer_Minutes = BCD_to_Decimal(sAlarm.AlarmTime.Minutes);
+	  uint8_t time_Minutes = BCD_to_Decimal(sTime.Minutes);
+	  uint8_t timerMinutesLeft = timer_Minutes - time_Minutes;
+
+	  uint8_t time_Seconds = BCD_to_Decimal(sTime.Seconds);
+
+	  char bufferEncoderOrTimer[4];
+	  sprintf(bufferEncoderOrTimer, "%02d", alarmIsSet ? timerMinutesLeft : counter);
 	  ssd1306_SetCursor(20, 0);
-	  ssd1306_WriteString(bufferEncoder, Font_16x26, White);
+	  ssd1306_WriteString(bufferEncoderOrTimer, Font_16x26, White);
 
-
-	  uint8_t timer_Seconds = BCD_to_Decimal(sAlarm.AlarmTime.Seconds);
-
-
-//	  uint8_t testSec = sAlarm.AlarmTime.Seconds;
-	  char bufferTest[8];
-	  sprintf(bufferTest, "%02d", timer_Seconds);
-	  char bufferTest2[8];
-	  sprintf(bufferTest2, "%02d", time_Seconds);
-	  ssd1306_SetCursor(0, 30);
-	  ssd1306_WriteString(bufferTest, Font_11x18, White);
-	  ssd1306_SetCursor(60, 30);
-	  ssd1306_WriteString(bufferTest2, Font_11x18, White);
-	  ssd1306_SetCursor(0, 50);
-	  ssd1306_WriteString("end", Font_6x8, White);
+  	  if (alarmIsSet == 1) {
+  		  ssd1306_SetCursor(60, 30);
+  		  ssd1306_FillRectangle(60, 30, 70, 40, time_Seconds % 2 == 0 ? White : Black);
+  	  }
   }
 
   void printMenuScreen()
@@ -280,6 +278,7 @@ int main(void)
   	  ssd1306_SetCursor(0, 0);
   	  ssd1306_FillRectangle(0, 0, 128, 20, activeMenuOption == menuSetTime ? White : Black);
   	  ssd1306_WriteString("Set Time", Font_11x18, activeMenuOption == menuSetTime ? Black : White);
+
   	  ssd1306_SetCursor(0, 25);
   	  ssd1306_FillRectangle(0, 25, 128, 20, activeMenuOption == menuSetDate ? White : Black);
   	  ssd1306_WriteString("Set Date", Font_11x18, activeMenuOption == menuSetDate ? Black : White);
@@ -288,23 +287,6 @@ int main(void)
   void printSetTimeScreen()
   {
 	uint8_t rawCounter = __HAL_TIM_GET_COUNTER(&htim2);
-//
-//	if (rawCounter != prevCounter)
-//	{
-//
-//		if (activeMenuOption == menuSetTime)
-//		{
-//			activeMenuOption = menuSetDate;
-//		} else {
-//			activeMenuOption = menuSetTime;
-//		}
-//
-//		prevCounter = rawCounter;
-//	}
-
-//	  HAL_RTC_GetTime(&hrtc, &sTime, FORMAT_BCD);
-//	  HAL_RTC_GetDate(&hrtc, &DateToUpdate, FORMAT_BCD);
-
 
 	  if (activeSetTimeOption == setTimeSeconds) {
 		  setTime_Seconds = rawCounter;
@@ -329,7 +311,6 @@ int main(void)
 	  ssd1306_WriteString(buffer_min, Font_16x26, White);
 	  ssd1306_SetCursor(95, 0);
 	  ssd1306_WriteString(buffer_sec, Font_7x10, White);
-
   }
 
   void checkAlarm()
@@ -364,13 +345,6 @@ int main(void)
 	  if (activeScreen == screenTime)
 	  {
 		  printTimeScreen();
-
-//		  uint8_t encoderState = HAL_TIM_Encoder_GetState(&htim2);
-//		  if (encoderState != encoderPrevState)
-//		  {
-//			  activeScreen = screenTimer;
-//			  encoderPrevState = encoderState;
-//		  }
 	  } else if (activeScreen == screenWeather)
 	  {
 		  printWeatherScreen();
@@ -683,37 +657,34 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-uint8_t DecimalToBCD(uint8_t val) {
-    return ((val / 10) << 4) | (val % 10);
-}
 
-void Set_RTC_Alarm(uint32_t seconds)
+
+void Set_RTC_Alarm(uint32_t timerMinutes)
 {
     // Get the current time and date
-    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN); // Needed to read date as well due to a quirk
+    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
+    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BCD); // Needed to read date as well due to a quirk
 
     // Calculate the new alarm time
-    uint32_t total_seconds = sTime.Seconds + seconds;
-    uint32_t new_seconds = total_seconds % 60;
-    uint32_t minutes = sTime.Minutes + (total_seconds / 60);
+    uint32_t minutes = BCD_to_Decimal(sTime.Minutes) + timerMinutes;
     uint32_t new_minutes = minutes % 60;
-    uint32_t new_hours = (sTime.Hours + (minutes / 60)) % 24;
+    uint32_t new_hours = (BCD_to_Decimal(sTime.Hours) + (minutes / 60)) % 24;
 
     sAlarm.AlarmTime.Hours = DecimalToBCD(new_hours);
     sAlarm.AlarmTime.Minutes = DecimalToBCD(new_minutes);
-    sAlarm.AlarmTime.Seconds = DecimalToBCD(new_seconds);
     // Set the alarm
-    if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
+    if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
     {
         // Initialization Error
         Error_Handler();
     }
+
+    __HAL_TIM_SET_COUNTER(&htim2, 0);
 }
 
 void Clear_RTC_Alarm()
 {
-	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
 
 	sAlarm.AlarmTime.Hours = sTime.Hours;
 	sAlarm.AlarmTime.Minutes = sTime.Minutes;
@@ -754,6 +725,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 							Set_RTC_Alarm(rawCounter);
 							alarmIsSet = 1;
 						}
+					} else {
+						Clear_RTC_Alarm();
 					}
 				} else {
 					if (activeScreen == screenSetTime) {
