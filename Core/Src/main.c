@@ -52,7 +52,7 @@ RTC_HandleTypeDef hrtc;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
-float temperature, pressure, humidity;
+float Temperature, Pressure, Humidity;
 
 uint8_t counterMode = 0;
 uint8_t isAlarm = 0;
@@ -199,13 +199,13 @@ int main(void)
 	  HAL_Delay(100);
 
 	  char bufferTemp[10];
-	  snprintf(bufferTemp, sizeof(bufferTemp), "%05.2f C", temperature);
+	  snprintf(bufferTemp, sizeof(bufferTemp), "%05.2f C", Temperature);
 
 	  char bufferPres[15];
-	  snprintf(bufferPres, sizeof(bufferPres), "%06.2f mm p.c.", pressure / 133.322);
+	  snprintf(bufferPres, sizeof(bufferPres), "%06.2f mm p.c.", Pressure / 133.322);
 
 	  char bufferHum[10];
-	  snprintf(bufferHum, sizeof(bufferHum), "%05.2f %%", humidity);
+	  snprintf(bufferHum, sizeof(bufferHum), "%05.2f %%", Humidity);
 
 	  ssd1306_SetCursor(0, 0);
 	  ssd1306_WriteString(bufferTemp, Font_11x18, White);
