@@ -46,7 +46,7 @@ Manual:
    - button 1 - if the selected delay is not 0, will start the countdown. Click again to stop countdown and clear.
    - button 1 or button 2 when the alarm is on - will stop alarm 
 7. Menu screen
-   - encoder - change selection. It is useless for now, because there is only one active optio - set time.
+   - encoder - change selection. It is useless for now, because there is only one active option - set time.
    - button 1 - go back
    - button 2 - go to selected option
 9. Set time screen
