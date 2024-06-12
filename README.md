@@ -25,3 +25,7 @@ Pins:
 5. Buttons:
 - First - A3
 - Second - B1
+
+6. Battery for timer
+- G - 3v battery -
+- 3VB - 3v battery +
