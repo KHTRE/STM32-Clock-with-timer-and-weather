@@ -26,6 +26,8 @@
 #include "ssd1306_fonts.h"
 #include <stdio.h>
 #include "BME280_STM32.h"
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -517,40 +519,47 @@ static void MX_RTC_Init(void)
 
   /* USER CODE BEGIN Check_RTC_BKUP */
 
-  /* USER CODE END Check_RTC_BKUP */
-
-  /** Initialize RTC and set the Time and Date
-  */
-  sTime.Hours = 0x0;
-  sTime.Minutes = 0x0;
-  sTime.Seconds = 0x0;
-
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  uint32_t backup_val = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1);
+  if (backup_val != 0x32F2)
   {
-    Error_Handler();
-  }
-  DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
-  DateToUpdate.Month = RTC_MONTH_JANUARY;
-  DateToUpdate.Date = 0x1;
-  DateToUpdate.Year = 0x0;
+	  /* USER CODE END Check_RTC_BKUP */
 
-  if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	  /** Initialize RTC and set the Time and Date
+	  */
+	  sTime.Hours = 0x0;
+	  sTime.Minutes = 0x0;
+	  sTime.Seconds = 0x0;
 
-  /** Enable the Alarm A
-  */
-  sAlarm.AlarmTime.Hours = 0x0;
-  sAlarm.AlarmTime.Minutes = 0x0;
-  sAlarm.AlarmTime.Seconds = 0x0;
-  sAlarm.Alarm = RTC_ALARM_A;
-  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN RTC_Init 2 */
+	  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+	  DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+	  DateToUpdate.Month = RTC_MONTH_JANUARY;
+	  DateToUpdate.Date = 0x1;
+	  DateToUpdate.Year = 0x0;
 
+	  if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+
+	  /** Enable the Alarm A
+	  */
+	  sAlarm.AlarmTime.Hours = 0x0;
+	  sAlarm.AlarmTime.Minutes = 0x0;
+	  sAlarm.AlarmTime.Seconds = 0x0;
+	  sAlarm.Alarm = RTC_ALARM_A;
+	  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
+	  {
+		Error_Handler();
+	  }
+	  /* USER CODE BEGIN RTC_Init 2 */
+
+  HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0x32F2);
+} else {
+	// do not initialize if we get data from backup
+}
   /* USER CODE END RTC_Init 2 */
 
 }
