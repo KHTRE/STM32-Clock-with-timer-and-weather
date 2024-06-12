@@ -220,11 +220,11 @@ void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color) {
  */
 char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
     uint32_t i, b, j;
-    
+
     // Check if character is valid
     if (ch < 32 || ch > 126)
         return 0;
-    
+
     // Check remaining space on current line
     if (SSD1306_WIDTH < (SSD1306.CurrentX + Font.width) ||
         SSD1306_HEIGHT < (SSD1306.CurrentY + Font.height))
@@ -232,7 +232,7 @@ char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
         // Not enough space on current line
         return 0;
     }
-    
+
     // Use the font to write
     for(i = 0; i < Font.height; i++) {
         b = Font.data[(ch - 32) * Font.height + i];
@@ -244,10 +244,46 @@ char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
             }
         }
     }
-    
+
     // The current space is now taken
     SSD1306.CurrentX += Font.char_width ? Font.char_width[ch - 32] : Font.width;
-    
+
+    // Return written char for validation
+    return ch;
+}
+
+char ssd1306_WriteScaledChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color, float scaleX, float scaleY) {
+    uint32_t i, b, j;
+    int scaledWidth = Font.width * scaleX;
+    int scaledHeight = Font.height * scaleY;
+
+    // Check if character is valid
+    if (ch < 32 || ch > 126)
+        return 0;
+
+    // Check remaining space on current line
+    if (SSD1306_WIDTH < (SSD1306.CurrentX + scaledWidth) ||
+        SSD1306_HEIGHT < (SSD1306.CurrentY + scaledHeight))
+    {
+        // Not enough space on current line
+        return 0;
+    }
+
+    // Use the font to write
+    for(i = 0; i < scaledHeight; i++) {
+        b = Font.data[(ch - 32) * Font.height + (int)(i / scaleY)];
+        for(j = 0; j < scaledWidth; j++) {
+            if((b << j) & 0x8000)  {
+                ssd1306_DrawPixel(SSD1306.CurrentX + j, (SSD1306.CurrentY + i), (SSD1306_COLOR) color);
+            } else {
+                ssd1306_DrawPixel(SSD1306.CurrentX + j, (SSD1306.CurrentY + i), (SSD1306_COLOR)!color);
+            }
+        }
+    }
+
+    // The current space is now taken
+    SSD1306.CurrentX += scaledWidth;
+
     // Return written char for validation
     return ch;
 }
@@ -256,6 +292,20 @@ char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
 char ssd1306_WriteString(char* str, SSD1306_Font_t Font, SSD1306_COLOR color) {
     while (*str) {
         if (ssd1306_WriteChar(*str, Font, color) != *str) {
+            // Char could not be written
+            return *str;
+        }
+        str++;
+    }
+
+    // Everything ok
+    return *str;
+}
+
+/* Write full string to screenbuffer */
+char ssd1306_WriteScaledString(char* str, SSD1306_Font_t Font, SSD1306_COLOR color, float scaleX, float scaleY) {
+    while (*str) {
+        if (ssd1306_WriteScaledChar(*str, Font, color, scaleX, scaleY) != *str) {
             // Char could not be written
             return *str;
         }

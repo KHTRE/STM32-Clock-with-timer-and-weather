@@ -186,13 +186,13 @@ int main(void)
 	  sprintf(bufferSec, "%02d", timeSeconds);
 
 	  ssd1306_SetCursor(0, 0);
-	  ssd1306_WriteString(bufferHours, Font_16x26, White);
-	  ssd1306_SetCursor(35, 0);
-	  ssd1306_WriteString(":", Font_16x26, White);
-	  ssd1306_SetCursor(55, 0);
-	  ssd1306_WriteString(bufferMin, Font_16x26, White);
-	  ssd1306_SetCursor(95, 0);
-	  ssd1306_WriteString(bufferSec, Font_7x10, White);
+	  ssd1306_WriteScaledString(bufferHours, Font_16x26, White, 1.6, 1.6);
+	  ssd1306_SetCursor(47, 0);
+	  ssd1306_WriteScaledString(":", Font_16x26, White, 1.6, 1.6);
+	  ssd1306_SetCursor(72, 0);
+	  ssd1306_WriteScaledString(bufferMin, Font_16x26, White, 1.6, 1.6);
+
+	  ssd1306_FillRectangle(0, 51, timeSeconds * 2, 55, White);
   }
 
   void printWeatherScreen()
@@ -201,13 +201,14 @@ int main(void)
 	  HAL_Delay(100);
 
 	  char bufferTemp[10];
-	  snprintf(bufferTemp, sizeof(bufferTemp), "%05.2f C", Temperature);
+      // added -1 to temperature in order not to calibrate it))
+	  snprintf(bufferTemp, sizeof(bufferTemp), "%04.1f C", Temperature - 1);
 
 	  char bufferPres[15];
-	  snprintf(bufferPres, sizeof(bufferPres), "%06.2f mm p.c.", Pressure / 133.322);
+	  snprintf(bufferPres, sizeof(bufferPres), "%05.1f mmpc", Pressure / 133.322);
 
 	  char bufferHum[10];
-	  snprintf(bufferHum, sizeof(bufferHum), "%05.2f %%", Humidity);
+	  snprintf(bufferHum, sizeof(bufferHum), "%04.1f %%", Humidity);
 
 	  ssd1306_SetCursor(0, 0);
 	  ssd1306_WriteString(bufferTemp, Font_11x18, White);
@@ -255,13 +256,19 @@ int main(void)
 
 	  char bufferEncoderOrTimer[8];
 	  sprintf(bufferEncoderOrTimer, "%02d", alarmIsSet ? fullMinutesLeft : counter);
-	  ssd1306_SetCursor(20, 0);
-	  ssd1306_WriteString(bufferEncoderOrTimer, Font_16x26, White);
-
 	  char bufferSecondsLeft[4];
 	  sprintf(bufferSecondsLeft, "%02d", secondsLeft);
-	  ssd1306_SetCursor(60, 0);
-	  ssd1306_WriteString(alarmIsSet ? bufferSecondsLeft : "", Font_16x26, White);
+
+	  ssd1306_SetCursor(00, 0);
+	  ssd1306_WriteScaledString(bufferEncoderOrTimer, Font_16x26, White, 1.6, 1.6);
+	  ssd1306_SetCursor(47, 0);
+	  ssd1306_WriteScaledString(alarmIsSet ? ":" : "", Font_16x26, White, 1.6, 1.6);
+	  ssd1306_SetCursor(72, 0);
+	  ssd1306_WriteScaledString(alarmIsSet ? bufferSecondsLeft : "", Font_16x26, White, 1.6, 1.6);
+	  ssd1306_SetCursor(3, 45);
+	  ssd1306_WriteString("min", Font_11x18, White);
+	  ssd1306_SetCursor(75, 45);
+	  ssd1306_WriteString(alarmIsSet ? "sec" : "", Font_11x18, White);
   }
 
   void printMenuScreen()
